@@ -299,9 +299,10 @@ def plot_mid(
         hue='Mass',
         data=dfCopy,
         palette=pal,
-        ci='sd'
+        ci='sd',
         ).set(title=selected_metabolite)
     plt.legend(loc='upper right')
+    plt.ylim((0, 1.02))
     #plt.xticks(rotation = 90)
     plt.grid(axis='y', color='0.75')
 
