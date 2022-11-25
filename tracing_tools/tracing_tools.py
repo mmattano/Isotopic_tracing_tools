@@ -111,6 +111,25 @@ def find_AA_derivative(
     return derivative_formula, new_formula
 
 
+def _adjust_TMS_met_formula(
+    met_formula: str,
+    derivative_formula: str,
+):
+    # I'll add the whole formula correction spiel here
+    multipliers = [int(s) for s in re.findall(r'\d+', derivative_formula)]
+    if len(multipliers) < 4:
+        multipliers.append(1)
+    formula_multipliers = [int(s) for s in re.findall(r'\d+', met_formula)]
+    cs = formula_multipliers[0] - multipliers[0]
+    hs = formula_multipliers[1] - multipliers[1]
+    os = formula_multipliers[2] - multipliers[2]
+    sis = formula_multipliers[3] - multipliers[3]
+
+    new_formula = f'C{cs}H{hs}O{os}'
+
+    return new_formula
+
+
 def correct_TASQ_table(
     dataframe: pd.DataFrame,
     derivatization_method: str,
@@ -143,6 +162,9 @@ def correct_TASQ_table(
                 derivative, formula = find_AA_derivative(original_formula, derivatives, exception=True)
             else:
                 derivative, formula = find_AA_derivative(original_formula, derivatives, exception=False)
+        elif derivatization_method == 'TMS':
+            derivative = derivatives.loc[0, 'formula']
+            formula = _adjust_TMS_met_formula(original_formula, derivative)
 
         # find the ascending mass order based on their name
         isotopologues = dataframe[dataframe.loc[:, 'Name'].str.contains(metabolite)]
