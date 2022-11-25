@@ -130,6 +130,49 @@ def _adjust_TMS_met_formula(
     return new_formula
 
 
+def _create_compound_dict(
+    formula: str,
+):
+    idxs = [idx for idx in range(len(formula)) if formula[idx].isupper()]
+    idxs.append(len(formula))
+    compound_dict = {}
+    for i in range(len(idxs) - 1):
+        substring = formula[idxs[i]:idxs[i + 1]]
+        element = ''.join(re.split("[^a-zA-Z]*", substring))
+        if any([idx for idx in range(len(substring)) if substring[idx].isnumeric()]):
+            # This element has a multiplier
+            multiplier = ''.join(re.split("[^r'\d+']", substring))
+            compound_dict[element] = multiplier
+        else:
+            # This element has no multiplier
+            compound_dict[element] = 0
+    
+    return compound_dict
+
+
+def auto_adjust_met_formula(
+    met_formula: str,
+    metabolite: str,
+):
+
+    compound = pubchempy.get_compounds(metabolite, 'name')[0]
+    formula = compound.molecular_formula
+    compound_dict = _create_compound_dict(formula)
+    derivatized_dict = _create_compound_dict(met_formula)
+    derivative = ''
+    for element in derivatized_dict:
+        if element in compound_dict:
+            multiplier = int(derivatized_dict[element]) - int(compound_dict[element])
+        if multiplier > 1:
+            derivative += f'{element}{multiplier}'
+        elif multiplier == 0:
+            continue
+        else:
+            derivative += f'{element}'
+
+    return derivative, formula
+
+
 def correct_TASQ_table(
     dataframe: pd.DataFrame,
     derivatization_method: str,
@@ -165,6 +208,9 @@ def correct_TASQ_table(
         elif derivatization_method == 'TMS':
             derivative = derivatives.loc[0, 'formula']
             formula = _adjust_TMS_met_formula(original_formula, derivative)
+        elif derivatization_method == 'auto':
+            # find the SP derivative formula
+            derivative, formula = auto_adjust_met_formula(original_formula, metabolite)
 
         # find the ascending mass order based on their name
         isotopologues = dataframe[dataframe.loc[:, 'Name'].str.contains(metabolite)]
